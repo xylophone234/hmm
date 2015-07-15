@@ -2,6 +2,7 @@
 from __future__ import division
 import numpy as np
 import os
+import json
 
 def prepareData(path):
 	trainO=[]
@@ -33,11 +34,11 @@ def prepareData(path):
 			trainO.append(tempO)
 			trainS.append(''.join(tempS))
 
-	return trainO,trianS,charDict
+	return trainO,trainS,charDict
 
 
 class HMM():
-	def __init__(M,N):
+	def __init__(self,M,N):
 		self.M=M
 		self.N=N
 		self.A=np.zeros((M,M))
@@ -45,14 +46,17 @@ class HMM():
 		self.pi=np.zeros(M)
 
 	# 监督训练
-	def strain(trainO,trainS):
+	def strain(self,trainO,trainS):
 		assert len(trainO)==len(trainS),'length of trainO and trainS not match'
+		d={'B':0,'M':1,'E':2,'S':3}
 		for i in range(len(trainO)):
-			self.pi[trainS[0]]+=1
-			for j in range(len(trianO[i])):
-					self.B[trainS[i,j]][trainO[i,j]]+=1
-					if j<len(trainO)-1:
-						self.A[trainS[j],trianS[j+1]]+=1
+			self.pi[d[trainS[0][0]]]+=1
+			for j in range(len(trainO[i])):
+					# print d[trainS[i][j]],trainO[i][j]
+					self.B[d[trainS[i][j]]][trainO[i][j]]+=1
+					if j<len(trainO[i])-1:
+						print j,len(trainO[i])-1
+						self.A[d[trainS[i][j]],d[trainS[i][j+1]]]+=1
 
 		# 逐行归一化
 		self.A=self.A/self.A.sum(axis=1)
@@ -87,6 +91,30 @@ class HMM():
 			I[t]=phi[t+1,I[t+1]]
 
 		return I,prob
+
+	def toJson(self,filename):
+		a=list(self.A)
+		b=list(self.B)
+		pi=list(self.pi)
+		n=self.N
+		m=self.M
+		obj={'a':a,'b':b,'pi':pi,'n':n,'m':m}
+		f=open(filename,'w')
+		f.write(json.dumps(obj))
+		f.close()
+
+	def fromJson(self,filename):
+		f=open(filename)
+		s=f.read()
+		obj=json.load(s)
+		self.A=np.array(obj['a'])
+		self.B=np.array(obj['b'])
+		self.pi=np.array(obj['pi'])
+		self.N=obj['n']
+		self.M=obj['m']
+
+
+
 
 
 	
