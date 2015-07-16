@@ -13,28 +13,37 @@ def prepareData(path):
 	for filename in os.listdir(path):
 		pragraphs=open(path+'/'+filename,'r').readlines()
 		word_list=[pragraph.rstrip().split() for pragraph in pragraphs]
-		tempO=[]
-		tempS=[]
+		
 		i+=1
 		if i%10==0: print i
-		for word in word_list:
-			if len(word)==1:
-				tempS.append('S')
-			elif len(word)==2:
-				tempS.append('BE')
-			else:
-				tempS.append('B'+'M'*(len(word)-2)+'E')
-			for char in word:
-				if char not in charDict.keys():
-					charDict[char]=charCount
-					charCount+=1
-				tempO.append(charDict[char])
+		for centence in word_list:
+			# print ' '.join(centence)
+			# raw_input()
+			tempO=[]
+			tempS=[]
+			for word in centence:
+				utfword=word.decode('utf-8')
+				if len(utfword)==1:
+					tempS.append('S')
+				elif len(utfword)==2:
+					tempS.append('BE')
+				else:
+					tempS.append('B'+'M'*(len(utfword)-2)+'E')
+				# print word
+				# print ' '.join(tempS)
+				# raw_input()
+				for char in utfword:
+					if char not in charDict.keys():
+						charDict[char]=charCount
+						charCount+=1
+					tempO.append(charDict[char])
+			# print ' '.join(centence)
 					
 
 			trainO.append(tempO)
 			trainS.append(''.join(tempS))
 
-	return trainO,trainS,charDict
+	return trainO,trainS,charDict,os.listdir(path)
 
 
 class HMM():
@@ -55,12 +64,12 @@ class HMM():
 					# print d[trainS[i][j]],trainO[i][j]
 					self.B[d[trainS[i][j]]][trainO[i][j]]+=1
 					if j<len(trainO[i])-1:
-						print j,len(trainO[i])-1
+						# print j,len(trainO[i])-1
 						self.A[d[trainS[i][j]],d[trainS[i][j+1]]]+=1
 
 		# 逐行归一化
-		self.A=self.A/self.A.sum(axis=1)
-		self.B=self.B/self.B.sum(axis=1)
+		self.A=self.A/self.A.sum(axis=1).reshape((self.M,-1))
+		self.B=self.B/self.B.sum(axis=1).reshape((self.M,-1))
 		self.pi=self.pi/self.pi.sum()
 		
 
@@ -68,19 +77,20 @@ class HMM():
 	def veterbi(self,O):
 		# 观测序列长度
 		T=len(O)
-		N=self.N
-		phi=np.zeros((T,N))
+		M=self.M
+		phi=np.zeros((T,M))
+		delta=np.zeros((T,M))
 		# 最优路径
 		I=np.zeros(T)
 		# 初始化phi0 delta0
-		for i in range(N):
+		for i in range(M):
 			phi[0,i]=0
 			delta[0,i]=self.pi[i]*self.B[0,O[i]]
 
 		# 地推 动态规划
 		for t in range(1,T):
-			for i in range(N):
-				p=np.array([phi[t-1,j]*self.A[j,i] for j in range(N)])
+			for i in range(M):
+				p=np.array([phi[t-1,j]*self.A[j,i] for j in range(M)])
 				phi[t,i]=p.argmax()
 				delta[t,i]=p[phi[t,i]]*self.B[i,O[t]]
 
