@@ -47,19 +47,21 @@ def prepareData(path):
 
 
 class HMM():
-	def __init__(self,M,N):
+	def __init__(self,N,M):
 		self.M=M
 		self.N=N
-		self.A=np.zeros((M,M))
-		self.B=np.zeros((M,N))
-		self.pi=np.zeros(M)
+		self.A=np.zeros((N,N))
+		self.B=np.zeros((N,M))
+		self.pi=np.zeros(N)
 
 	# 监督训练
 	def strain(self,trainO,trainS):
 		assert len(trainO)==len(trainS),'length of trainO and trainS not match'
 		d={'B':0,'M':1,'E':2,'S':3}
 		for i in range(len(trainO)):
-			self.pi[d[trainS[0][0]]]+=1
+			# print len(trainS[i])
+			if len(trainS[i])==0:continue
+			self.pi[d[trainS[i][0]]]+=1
 			for j in range(len(trainO[i])):
 					# print d[trainS[i][j]],trainO[i][j]
 					self.B[d[trainS[i][j]]][trainO[i][j]]+=1
@@ -68,8 +70,8 @@ class HMM():
 						self.A[d[trainS[i][j]],d[trainS[i][j+1]]]+=1
 
 		# 逐行归一化
-		self.A=self.A/self.A.sum(axis=1).reshape((self.M,-1))
-		self.B=self.B/self.B.sum(axis=1).reshape((self.M,-1))
+		self.A=self.A/self.A.sum(axis=1).reshape((self.N,-1))
+		self.B=self.B/self.B.sum(axis=1).reshape((self.N,-1))
 		self.pi=self.pi/self.pi.sum()
 		
 
@@ -77,26 +79,27 @@ class HMM():
 	def veterbi(self,O):
 		# 观测序列长度
 		T=len(O)
-		M=self.M
-		phi=np.zeros((T,M))
-		delta=np.zeros((T,M))
+		N=self.N
+		phi=np.zeros((T,N))
+		delta=np.zeros((T,N))
 		# 最优路径
 		I=np.zeros(T)
 		# 初始化phi0 delta0
-		for i in range(M):
+		for i in range(N):
 			phi[0,i]=0
-			delta[0,i]=self.pi[i]*self.B[0,O[i]]
+			delta[0,i]=self.pi[i]*self.B[0,O[0]]
 
 		# 地推 动态规划
 		for t in range(1,T):
-			for i in range(M):
-				p=np.array([phi[t-1,j]*self.A[j,i] for j in range(M)])
+			for i in range(N):
+				p=np.array([delta[t-1,j]*self.A[j,i] for j in range(N)])
 				phi[t,i]=p.argmax()
 				delta[t,i]=p[phi[t,i]]*self.B[i,O[t]]
 
 		prob=delta[T-1,:].max()
 		I[T-1]=delta[T-1,:].argmax()
 
+		print phi
 		for t in range(T-2,-1,-1):
 			I[t]=phi[t+1,I[t+1]]
 
