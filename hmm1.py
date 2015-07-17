@@ -24,11 +24,14 @@ def prepareData(path):
 			for word in centence:
 				utfword=word.decode('utf-8')
 				if len(utfword)==1:
-					tempS.append('S')
+					# tempS.append('S')
+					tempS.append(3)
 				elif len(utfword)==2:
-					tempS.append('BE')
+					# tempS.append('BE')
+					tempS.extend([0,2])
 				else:
-					tempS.append('B'+'M'*(len(utfword)-2)+'E')
+					# tempS.append('B'+'M'*(len(utfword)-2)+'E')
+					tempS.extend([0]+[1]*(len(utfword)-2)+[2])
 				# print word
 				# print ' '.join(tempS)
 				# raw_input()
@@ -41,10 +44,9 @@ def prepareData(path):
 					
 
 			trainO.append(tempO)
-			trainS.append(''.join(tempS))
+			trainS.append(tempS)
 
-	return trainO,trainS,charDict,os.listdir(path)
-
+	return trainO,trainS,charDict
 
 class HMM():
 	def __init__(self,N,M):
@@ -57,17 +59,16 @@ class HMM():
 	# 监督训练
 	def strain(self,trainO,trainS):
 		assert len(trainO)==len(trainS),'length of trainO and trainS not match'
-		d={'B':0,'M':1,'E':2,'S':3}
+		# d={'B':0,'M':1,'E':2,'S':3}
 		for i in range(len(trainO)):
 			# print len(trainS[i])
 			if len(trainS[i])==0:continue
-			self.pi[d[trainS[i][0]]]+=1
+			self.pi[trainS[i][0]]+=1
 			for j in range(len(trainO[i])):
-					# print d[trainS[i][j]],trainO[i][j]
-					self.B[d[trainS[i][j]]][trainO[i][j]]+=1
+					self.B[trainS[i][j]][trainO[i][j]]+=1
 					if j<len(trainO[i])-1:
 						# print j,len(trainO[i])-1
-						self.A[d[trainS[i][j]],d[trainS[i][j+1]]]+=1
+						self.A[trainS[i][j],trainS[i][j+1]]+=1
 
 		# 逐行归一化
 		self.A=self.A/self.A.sum(axis=1).reshape((self.N,-1))
@@ -135,11 +136,15 @@ def test():
 	trainO,trainS,charDict=prepareData('train_data')
 	print 'loading complete'
 	hmm=HMM(4,len(charDict))
-	hmm.train(trainO,trainS)
-	O='乒乓球拍卖完了'
+	hmm.strain(trainO,trainS)
+	O='乒乓球拍卖完了'.decode('utf-8')
 	nO=[charDict[s] for s in O]
 	I,p=hmm.veterbi(nO)
-	print I
+	temp=[]
+	for char , s in zip(O,I):
+		temp.append(char)
+		if s==2 or s==3:temp.append('/')
+	print ''.join(temp)
 
 if __name__ == '__main__':
 	test()
